@@ -218,3 +218,5 @@ __marimo__/
 BASEMENT/
 
 models/
+states/
+odes/

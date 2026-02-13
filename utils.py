@@ -19,10 +19,3 @@ def get_model(base_dir: Path, name: str) -> td.Model:
     return model
 
 #model = get_model(BASE_DIR, '0_0_0')
-
-ALLOWED_STATE_CHANGES = {
-    "S": ["S", "Q", "L"],
-    "Q": ["Q", "L", "B"],
-    "L": ["L", "Q", "B"],
-    "B": ["B", "S"],
-}
