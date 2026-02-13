@@ -1,3 +1,48 @@
+"""
+Generate the full experimental design for SQLB simulation runs.
+
+This script defines all global simulation parameters and constructs
+the Cartesian product of:
+
+    - random seed (replication group)
+    - agents_average_initial_opinion
+    - technology_success_rate
+
+Each unique combination becomes one simulation configuration,
+saved as a row in settings.csv.
+
+Design structure:
+    - seeds_num controls stochastic replications.
+    - agents_average_initial_opinion_list spans the initial
+      mean sentiment toward the technology.
+    - technology_success_rate_list spans objective AI accuracy.
+    - Each (seed, opinion, accuracy) triplet defines one model.
+
+Naming convention:
+    name = "{seed_index}_{opinion_index}_{accuracy_index}"
+
+    This ensures:
+        - deterministic mapping between settings and model outputs
+        - compatibility with downstream ODE fitting and tradeoff analysis
+
+Output:
+    settings.csv with columns:
+        name
+        group                  (seed group identifier)
+        seed
+        agents_average_initial_opinion
+        technology_success_rate
+
+Experimental size:
+    total_runs = seeds_num × len(opinion_list) × len(success_rate_list)
+
+This file defines the parameter grid that later enables:
+    - ODE reduction and k estimation
+    - final adoption computation
+    - tradeoff contour analysis
+    - decision framework construction
+"""
+
 import csv
 import numpy as np
 

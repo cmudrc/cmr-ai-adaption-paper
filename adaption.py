@@ -1,3 +1,44 @@
+"""
+Compute ODE-predicted final adoption for each experimental model.
+
+This script uses the fitted continuous-time Markov generator (Q matrix)
+obtained from ODE reduction of the SQLB state dynamics to estimate
+organizational adoption at the end of the simulation horizon.
+
+For each model:
+    1. Load fitted generator Q from: odes/{model_name}.npz
+    2. Load initial state distribution from: states/{model_name}.csv
+    3. Simulate the ODE system:
+            dx/dt = x Q
+       using explicit Euler integration over T steps
+    4. Compute final adoption:
+            A_final = Q(T) + L(T)
+    5. Merge with model design variables from settings.csv:
+            - agents_average_initial_opinion
+            - technology_success_rate
+    6. Save aggregated results to:
+            final_adaption.csv
+
+Interpretation:
+    - A_final represents the ODE-predicted fraction of agents
+      in adoption states (Q + L) at time horizon T.
+    - This provides a reduced-order surrogate of the ABM
+      suitable for tradeoff analysis and decision frameworks.
+
+Assumptions:
+    - The fitted generator Q is valid (rows sum to zero).
+    - Time step dt matches the original simulation step.
+    - Explicit Euler integration is numerically stable over T.
+    - All models share a comparable time horizon.
+
+Output:
+    final_adaption.csv with columns:
+        name,
+        agents_average_initial_opinion,
+        technology_success_rate,
+        final_adaption
+"""
+
 import numpy as np
 import pandas as pd
 from pathlib import Path

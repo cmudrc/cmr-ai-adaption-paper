@@ -1,4 +1,45 @@
-# tradeoff_iso_curves.py
+"""
+Render the decision surface: AI accuracy vs average initial opinion.
+
+This module visualizes the organizational adoption response surface
+derived from ODE-reduced SQLB dynamics. It plots final predicted
+adoption as a function of two controllable levers:
+
+    1. technology_success_rate  (AI accuracy)
+    2. agents_average_initial_opinion  (baseline organizational sentiment)
+
+The adoption metric used is:
+
+    final_adaption = Q(T) + L(T)
+
+where Q and L are the fractions of agents in adoption states at the
+end of the simulation horizon T, predicted by the fitted ODE surrogate.
+
+Workflow:
+    - Load final_adaption.csv (generated from ODE-based adoption calculation).
+    - Pivot the experimental grid into a 2D matrix:
+            rows    → average initial opinion
+            columns → AI accuracy
+            values  → final adoption
+    - Plot a filled contour (heatmap) of adoption across the design space.
+
+Interpretation (decision framework):
+    - The surface shows how improvements in AI accuracy can compensate
+      for lower initial sentiment, and vice versa.
+    - Regions of high adoption indicate feasible zones for successful rollout.
+    - If iso-adoption contours are enabled, each contour represents a
+      constant adoption target (a decision boundary).
+
+Assumptions:
+    - The experimental design forms a complete grid (no missing combinations).
+    - Adoption values lie in [0, 1]; color scaling is constrained accordingly.
+    - Each grid point represents an independent simulation configuration.
+
+Output:
+    - Displays the figure interactively.
+    - Optionally saves a publication-ready figure to disk.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -52,8 +93,7 @@ def plot_tradeoff_iso_adoption(
     ).sort_index(axis=0).sort_index(axis=1)
 
     if grid.isna().any().any():
-        # Contours require a complete grid; fail loudly so you know.
-        # If you want interpolation instead, tell me and I’ll add it.
+        # Contours require a complete grid; fail loudly of not. In that case, interpolation is needed.
         nan_locs = np.argwhere(grid.isna().to_numpy())
         raise ValueError(
             f"Grid has missing cells (NaNs). Example missing at {nan_locs[:5].tolist()} "

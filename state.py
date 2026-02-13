@@ -1,3 +1,51 @@
+"""
+Extract SQLB state time series from simulated agent-based models.
+
+This script reconstructs the discrete organizational state trajectory
+(S, Q, L, B) from each stored ABM simulation and converts it into
+fractional state time series suitable for ODE reduction and tradeoff analysis.
+
+For each model:
+
+    1. Load the saved trustdynamics model object.
+    2. For every time step t and every agent:
+           - Retrieve agent opinion.
+           - Compute inbound trust mass.
+           - Compute "loudness" = opinion × inbound_trust.
+           - Classify agent into SQLB state using hierarchical logic:
+                B: opinion < technology_use_cutoff_opinion
+                S: technology_use_cutoff_opinion ≤ opinion < 0
+                Q: opinion ≥ 0 and loudness < LOUDNESS_BOUND
+                L: opinion ≥ 0 and loudness ≥ LOUDNESS_BOUND
+    3. Aggregate counts across agents.
+    4. Convert counts to fractions.
+    5. Save per-step ratios to:
+           states/{model_name}.csv
+
+Output format:
+    CSV with columns:
+        t,
+        ratio_S,
+        ratio_Q,
+        ratio_L,
+        ratio_B
+
+Properties:
+    - Fractions sum to 1 at each timestep (by construction).
+    - Time horizon equals `steps` defined in config.
+    - LOUDNESS_BOUND controls activation threshold for advocacy (L vs Q).
+    - technology_use_cutoff_opinion controls belief threshold (B vs S).
+
+Role in the modeling pipeline:
+    ABM → state fractions (this file)
+        → ODE generator fitting
+        → final adoption estimation
+        → tradeoff contour / decision framework analysis
+
+This module defines the empirical bridge between agent-level dynamics
+and reduced-order organizational state dynamics.
+"""
+
 import csv
 from config import technology_use_cutoff_opinion
 import trustdynamics as td

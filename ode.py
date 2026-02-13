@@ -1,3 +1,58 @@
+"""
+Fit continuous-time SQLB transition rates (k values) from simulated state-fraction time series.
+
+This module performs an ODE/CTMC reduction of the agent-based SQLB dynamics by estimating
+a continuous-time Markov chain (CTMC) generator matrix Q from the per-step fractions of agents
+in each state:
+
+    x(t) = [S(t), Q(t), L(t), B(t)] ,  with  sum(x(t)) = 1
+
+We assume the reduced-order dynamics follow:
+
+    dx/dt = x Q
+
+where:
+    - off-diagonal entries Q[i,j] = k_{i->j} are nonnegative transition rates (hazards)
+    - diagonal entries are implied by conservation of probability mass:
+            Q[i,i] = -sum_{j != i} Q[i,j]
+      so each row sums to zero.
+
+Inputs:
+    - states/{model_name}.csv
+      containing per-step fractions:
+          ratio_S, ratio_Q, ratio_L, ratio_B
+
+Allowed transition structure:
+    The generator is constrained using ALLOWED_STATE_CHANGES. Disallowed transitions are
+    forced to zero; only allowed off-diagonal rates are fit.
+
+Estimation method:
+    - Uses the finite-difference approximation:
+          (x_{t+1} - x_t)/dt ≈ x_t Q
+    - Fits allowed off-diagonal rates via nonnegative least squares (NNLS) implemented
+      with projected gradient descent (dependency-free).
+    - Enforces generator validity by setting diagonals to negative row sums.
+    - Reports fit quality as RMSE between observed derivatives and model-predicted derivatives.
+
+Outputs:
+    For each model, saves a single compressed artifact:
+        odes/{model_name}.npz
+    containing:
+        - Q (4x4 generator matrix)
+        - dt (time step used in fitting)
+        - rmse (fit error)
+        - state_order (e.g., ["S","Q","L","B"])
+        - transitions, rates (human-readable mapping of k_{i->j})
+        - csv_path (source states file)
+
+Batch mode:
+    fit_all_models(BASE_DIR) loops over all available models and produces one .npz per model,
+    enabling downstream:
+        - ODE vs ABM comparison plots
+        - final adoption computation from ODE surrogate
+        - tradeoff contour / decision-framework analysis
+"""
+
 from __future__ import annotations
 from pathlib import Path
 from dataclasses import dataclass
@@ -223,33 +278,6 @@ def fit_all_models(base_dir: Path, dt: float = 1.0):
             print(f"  ✓ Saved {out_path.name} (RMSE={res.residual_rmse:.6f})")
         except Exception as e:
             print(f"  ✗ Failed: {e}")
-
-def ode_final_adoption(base_dir: Path, model_name: str, T: int | None = None) -> float:
-    # load Q
-    data = np.load(base_dir / "odes" / f"{model_name}.npz", allow_pickle=False)
-    Q = data["Q"].astype(float)
-    dt = float(data["dt"][0]) if "dt" in data else 1.0
-
-    # load initial x0 (and horizon from states)
-    df = pd.read_csv(base_dir / "states" / f"{model_name}.csv").sort_values("t")
-    x0 = np.array([df.loc[df.index[0], "ratio_S"],
-                   df.loc[df.index[0], "ratio_Q"],
-                   df.loc[df.index[0], "ratio_L"],
-                   df.loc[df.index[0], "ratio_B"]], dtype=float)
-
-    if T is None:
-        T = len(df) - 1  # last timestep index
-
-    x = x0.copy()
-    for _ in range(T):
-        x = x + dt * (x @ Q)
-        x = np.clip(x, 0.0, 1.0)
-        s = x.sum()
-        if s > 0:
-            x = x / s
-
-    A_final = float(x[1] + x[2])  # Q + L
-    return A_final
 
 
 if __name__ == "__main__":

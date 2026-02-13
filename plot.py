@@ -1,3 +1,46 @@
+"""
+Visualize the adoption tradeoff surface: AI accuracy vs initial organizational opinion.
+
+This module plots a decision-oriented response surface using the ODE-derived final adoption
+metric computed for each model configuration:
+
+    final_adaption = Q(T) + L(T)
+
+where Q and L are the fractions of agents in adoption states at the end of the horizon T
+(predicted by the reduced-order ODE surrogate fit to ABM outcomes).
+
+Inputs:
+    - final_adaption.csv (produced by the ODE adoption postprocessing step), with columns:
+        name,
+        agents_average_initial_opinion,
+        technology_success_rate,
+        final_adaption
+
+Method:
+    1. Convert the experiment table into a 2D grid via pivot:
+           rows    = agents_average_initial_opinion
+           columns = technology_success_rate
+           values  = final_adaption
+    2. Render the grid as a filled contour (heatmap) over the design space.
+
+Interpretation (decision framing):
+    - The plot provides a tradeoff surface between two levers:
+         (i) improving AI accuracy (technology_success_rate)
+        (ii) improving initial sentiment / readiness (agents_average_initial_opinion)
+    - Higher values indicate higher predicted final adoption at the horizon.
+    - If iso-adoption contours are enabled, each contour line represents a constant
+      adoption target (a feasibility boundary for decision-making).
+
+Output:
+    - By default, shows the figure interactively.
+    - Optionally saves a publication-ready PNG to the specified path.
+
+Notes:
+    - Contour plots require a complete grid of experiments; missing combinations will
+      produce NaNs and require interpolation or additional runs.
+    - Color scaling is constrained to [0, 1] because adoption is a fraction.
+"""
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -140,7 +183,7 @@ def plot_sqlb_states_vs_ode(
 
     ax.set_xlabel("Time step (t)")
     ax.set_ylabel("Agent ratio")
-    ax.set_title(f"SQLB — ABM (solid) vs ODE (dashed) — {model_name}")
+    ax.set_title(f"SQLB — ABM vs. ODE")
     ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
     ax.legend(ncol=2)
@@ -157,6 +200,6 @@ def plot_sqlb_states_vs_ode(
 
 
 # Example:
-plot_sqlb_states_vs_ode(BASE_DIR, "0_9_8")
-
-#plot_sqlb_states(BASE_DIR, "0_9_8")
+model_name = "0_9_8"
+#plot_sqlb_states(BASE_DIR, model_name)
+plot_sqlb_states_vs_ode(BASE_DIR, model_name, save_path=BASE_DIR / "figures" / "ode_example.png")
