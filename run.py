@@ -1,11 +1,10 @@
 import os
-import csv
 from copy import deepcopy
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import trustdynamics as td
 
-from utils import BASE_DIR
+from utils import BASE_DIR, load_settings
 from config import (
     steps,
     master_seed,
@@ -16,13 +15,7 @@ from config import (
     technology_use_cutoff_opinion,
 )
 
-
-# ---- Load settings ----
-settings_path = BASE_DIR / "settings.csv"
-with settings_path.open(mode="r", newline="", encoding="utf-8") as f:
-    reader = csv.DictReader(f)
-    settings = [dict(row) for row in reader]
-
+settings = load_settings(BASE_DIR)
 models_dir = BASE_DIR / "models"
 models_dir.mkdir(parents=True, exist_ok=True)
 

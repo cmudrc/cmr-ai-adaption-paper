@@ -19,3 +19,11 @@ def get_model(base_dir: Path, name: str) -> td.Model:
     return model
 
 #model = get_model(BASE_DIR, '0_0_0')
+
+# ---- Load settings ----
+def load_settings(base_dir: Path):
+    settings_path = BASE_DIR / "settings.csv"
+    with settings_path.open(mode="r", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        settings = [dict(row) for row in reader]
+    return settings

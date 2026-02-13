@@ -224,6 +224,33 @@ def fit_all_models(base_dir: Path, dt: float = 1.0):
         except Exception as e:
             print(f"  ✗ Failed: {e}")
 
+def ode_final_adoption(base_dir: Path, model_name: str, T: int | None = None) -> float:
+    # load Q
+    data = np.load(base_dir / "odes" / f"{model_name}.npz", allow_pickle=False)
+    Q = data["Q"].astype(float)
+    dt = float(data["dt"][0]) if "dt" in data else 1.0
+
+    # load initial x0 (and horizon from states)
+    df = pd.read_csv(base_dir / "states" / f"{model_name}.csv").sort_values("t")
+    x0 = np.array([df.loc[df.index[0], "ratio_S"],
+                   df.loc[df.index[0], "ratio_Q"],
+                   df.loc[df.index[0], "ratio_L"],
+                   df.loc[df.index[0], "ratio_B"]], dtype=float)
+
+    if T is None:
+        T = len(df) - 1  # last timestep index
+
+    x = x0.copy()
+    for _ in range(T):
+        x = x + dt * (x @ Q)
+        x = np.clip(x, 0.0, 1.0)
+        s = x.sum()
+        if s > 0:
+            x = x / s
+
+    A_final = float(x[1] + x[2])  # Q + L
+    return A_final
+
 
 if __name__ == "__main__":
     fit_all_models(BASE_DIR, dt=1.0)
