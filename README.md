@@ -25,6 +25,14 @@ To rerun the complete experimental and analysis workflow from scratch, execute t
 
 This pipeline runs and transforms agent-based simulations into a reduced ODE model and finally into a decision-oriented tradeoff surface.
 
+### Step 0: 
+
+Clone the repository and install the required dependencies:
+```
+pip install -r requirements.txt
+```
+This installs all Python packages needed to run the full simulation–reduction–decision pipeline. Python 3.11 or higher is required. It is recommended to use a virtual environment.
+
 ### Step 1: Run `config.py`
 
 This script defines the full experimental design grid and generates all parameter combinations. These are saved to `settings.csv` file. Each row represents one simulation configuration.
