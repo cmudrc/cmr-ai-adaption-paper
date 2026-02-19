@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     fieldnames = settings[0].keys()
 
-    settings_path = BASE_DIR / "settings.csv"
+    settings_path = BASE_DIR / "settings_1.csv"
     with open(settings_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()

@@ -16,15 +16,14 @@ def get_all_model_names(base_dir: Path) -> list[str]:
     
 #models_names = get_all_model_names(BASE_DIR)
 
-def get_model(base_dir: Path, name: str) -> td.Model:
-    path = base_dir / "models"
-    path = path / f"{name}.json"
+def get_model(models_dir: Path, name: str) -> td.Model:
+    path = models_dir / f"{name}.json"
     model = td.Model.load(path)
     return model
 
-#model = get_model(BASE_DIR, '0_0_0')
+#model = get_model(BASE_DIR / "models_1", '0_0_0')
 
-def load_settings(base_dir: Path):
+def load_settings():
     settings_path = BASE_DIR / "settings.csv"
     with settings_path.open(mode="r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
