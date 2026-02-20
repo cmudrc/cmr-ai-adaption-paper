@@ -104,8 +104,8 @@ def _simulate_ode_fractions(
     return x
 
 
-def plot_sqlb_states(states_dir: Path, model_name: str, *, show: bool = True, save_path: str | Path | None = None):
-    df = _load_states_df(states_dir, model_name)
+def plot_sqlb_states(base_dir: Path, model_name: str, *, show: bool = True, save_path: str | Path | None = None):
+    df = _load_states_df(base_dir / "states", model_name)
 
     plt.figure()
     plt.plot(df["t"], df["ratio_S"], label="S")
@@ -132,8 +132,7 @@ def plot_sqlb_states(states_dir: Path, model_name: str, *, show: bool = True, sa
 
 
 def plot_sqlb_states_vs_ode(
-    states_dir: Path,
-    odes_dir: Path,
+    base_dir: Path,
     model_name: str,
     *,
     show: bool = True,
@@ -143,6 +142,8 @@ def plot_sqlb_states_vs_ode(
     Overlay ABM state ratios (solid) vs ODE simulated ratios (dashed),
     with consistent colors per state.
     """
+    states_dir = base_dir / "states"
+    odes_dir = base_dir / "odes"
     df = _load_states_df(states_dir, model_name)
     Q, dt_fit, state_order = _load_Q_npz(odes_dir, model_name)
 
@@ -201,8 +202,7 @@ def plot_sqlb_states_vs_ode(
 
 
 # Example:
-model_name = "0_9_8"
 #plot_sqlb_states(BASE_DIR, model_name)
-plot_sqlb_states_vs_ode(BASE_DIR / "states_1", BASE_DIR / "odes_1", model_name, save_path=BASE_DIR / "figures" / "ode_1_example.png")
-plot_sqlb_states_vs_ode(BASE_DIR / "states_2", BASE_DIR / "odes_2", model_name, save_path=BASE_DIR / "figures" / "ode_2_example.png")
-plot_sqlb_states_vs_ode(BASE_DIR / "states_3", BASE_DIR / "odes_3", model_name, save_path=BASE_DIR / "figures" / "ode_3_example.png")
+plot_sqlb_states_vs_ode(BASE_DIR, "0_7_8_3", show=False, save_path=BASE_DIR / "figures" / "ode_1_example.png")
+plot_sqlb_states_vs_ode(BASE_DIR, "3_20_7_5", show=False, save_path=BASE_DIR / "figures" / "ode_2_example.png")
+plot_sqlb_states_vs_ode(BASE_DIR, "4_17_3_1", show=False, save_path=BASE_DIR / "figures" / "ode_3_example.png")

@@ -52,8 +52,9 @@ Batch mode:
         - final adoption computation from ODE surrogate
         - tradeoff contour / decision-framework analysis
 """
-
 from __future__ import annotations
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, Tuple, List, Iterable
@@ -64,10 +65,10 @@ from utils import BASE_DIR, get_all_model_names
 
 
 ALLOWED_STATE_CHANGES = {
-    "S": ["S", "Q", "L"],
-    "Q": ["Q", "L", "B"],
-    "L": ["L", "Q", "B"],
-    "B": ["B", "S"],
+    "S": ["S", "Q", "L", "B"],
+    "Q": ["S", "Q", "L", "B"],
+    "L": ["S", "Q", "L", "B"],
+    "B": ["S", "Q", "L", "B"],
 }
 STATE_ORDER = list(ALLOWED_STATE_CHANGES.keys())
 
@@ -264,21 +265,74 @@ def save_k_result_single_file(base_dir: Path, result: KFitResult) -> Path:
     )
     return out_path
 
-def fit_all_models(base_dir: Path, dt: float = 1.0):
+def _fit_one_model_job(args: tuple[str, str, float]) -> tuple[str, str]:
+    """
+    Worker job. args = (base_dir_str, model_name, dt)
+    Returns: (model_name, status)
+    """
+    base_dir_str, model_name, dt = args
+    base_dir = Path(base_dir_str)
+
     odes_dir = base_dir / "odes"
     odes_dir.mkdir(parents=True, exist_ok=True)
 
-    model_names = get_all_model_names(base_dir)
+    out_path = odes_dir / f"{model_name}.npz"
 
-    for model_name in model_names:
-        print(f"Fitting ODE for model: {model_name}")
+    # ---- Skip if already computed ----
+    if out_path.exists():
+        return model_name, "skipped (exists)"
+
+    # ---- Optional: lock to avoid double-work if multiple processes/scripts run ----
+    lock_path = out_path.with_suffix(".npz.lock")
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+    except FileExistsError:
+        return model_name, "skipped (locked)"
+
+    try:
+        # check again after acquiring lock
+        if out_path.exists():
+            return model_name, "skipped (exists)"
+
+        res = fit_k_from_states(base_dir, model_name, dt=dt)
+        save_k_result_single_file(base_dir, res)
+        return model_name, f"saved (RMSE={res.residual_rmse:.6f})"
+
+    except Exception as e:
+        return model_name, f"failed ({e})"
+
+    finally:
         try:
-            res = fit_k_from_states(base_dir, model_name, dt=dt)
-            out_path = save_k_result_single_file(base_dir, res)
-            print(f"  ✓ Saved {out_path.name} (RMSE={res.residual_rmse:.6f})")
-        except Exception as e:
-            print(f"  ✗ Failed: {e}")
+            os.remove(lock_path)
+        except FileNotFoundError:
+            pass
+
+
+def fit_all_models_parallel(base_dir: Path, dt: float = 1.0) -> None:
+    base_dir = Path(base_dir)
+
+    # Ensure output dir exists up-front (also created in workers)
+    (base_dir / "odes").mkdir(parents=True, exist_ok=True)
+
+    model_names = get_all_model_names()
+    total = len(model_names)
+    if total == 0:
+        print("No models found.")
+        return
+
+    max_workers = max(1, (os.cpu_count() or 2) - 2)
+
+    jobs = [(str(base_dir), name, float(dt)) for name in model_names]
+
+    done = 0
+    with ProcessPoolExecutor(max_workers=max_workers) as ex:
+        futures = [ex.submit(_fit_one_model_job, job) for job in jobs]
+        for fut in as_completed(futures):
+            name, status = fut.result()
+            done += 1
+            print(f"[{done}/{total}] {name}: {status}")
 
 
 if __name__ == "__main__":
-    fit_all_models(BASE_DIR, dt=1.0)
+    fit_all_models_parallel(BASE_DIR, dt=1.0)

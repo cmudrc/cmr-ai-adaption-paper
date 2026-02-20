@@ -43,7 +43,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from utils import BASE_DIR, get_all_model_names
+from utils import BASE_DIR, get_all_model_names, load_settings
 
 
 def ode_final_adoption(base_dir: Path, model_name: str, T: int | None = None) -> float:
@@ -76,17 +76,7 @@ def ode_final_adoption(base_dir: Path, model_name: str, T: int | None = None) ->
 
 
 def build_final_adaption_table(base_dir: Path, *, T: int | None = None) -> pd.DataFrame:
-    # settings table (maps name -> inputs)
-    settings_path = base_dir / "settings.csv"
-    if not settings_path.exists():
-        raise FileNotFoundError(f"settings.csv not found: {settings_path}")
-
-    settings = pd.read_csv(settings_path)
-
-    required = {"name", "agents_average_initial_opinion", "technology_success_rate"}
-    missing = required - set(settings.columns)
-    if missing:
-        raise ValueError(f"Missing columns in settings.csv: {sorted(missing)}")
+    settings = pd.DataFrame(load_settings())
 
     # make sure numeric
     settings["agents_average_initial_opinion"] = pd.to_numeric(settings["agents_average_initial_opinion"], errors="raise")
@@ -96,7 +86,7 @@ def build_final_adaption_table(base_dir: Path, *, T: int | None = None) -> pd.Da
     settings = settings.set_index("name", drop=False)
 
     rows = []
-    model_names = get_all_model_names(base_dir)
+    model_names = get_all_model_names()
 
     for model_name in model_names:
         if model_name not in settings.index:
@@ -113,8 +103,6 @@ def build_final_adaption_table(base_dir: Path, *, T: int | None = None) -> pd.Da
         rows.append(
             {
                 "name": model_name,
-                "agents_average_initial_opinion": float(r["agents_average_initial_opinion"]),
-                "technology_success_rate": float(r["technology_success_rate"]),
                 "final_adaption": float(final_adaption),
             }
         )

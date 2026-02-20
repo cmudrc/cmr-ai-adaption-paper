@@ -217,17 +217,8 @@ __marimo__/
 
 BASEMENT/
 
+settings.csv
 models/
-models_1/
-models_2/
-models_3/
-
 states/
-states_1/
-states_2/
-states_3/
-
 odes/
-odes_1/
-odes_2/
-odes_3/
+final_adaption.csv

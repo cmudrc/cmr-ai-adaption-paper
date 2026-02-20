@@ -45,8 +45,9 @@ This file defines the parameter grid that later enables:
 
 import csv
 import numpy as np
+from pathlib import Path
 
-from utils import BASE_DIR
+BASE_DIR = Path(__file__).resolve().parent
 
 
 # Steps
@@ -70,7 +71,7 @@ agents_average_initial_opinion_list = [
 technology_use_cutoff_opinion = -0.2
 
 # Teams
-teams_num = 10
+teams_num_list = [1, 5, 10, 15, 20, 25]
 teams_connection_probability = 0.3
 
 # Technology
@@ -84,19 +85,20 @@ if __name__ == "__main__":
     settings: list[dict] = []
     for s, seed in enumerate(seeds_list):
         for o, agents_average_initial_opinion in enumerate(agents_average_initial_opinion_list):
-            for t, technology_success_rate in enumerate(technology_success_rate_list):      
-                setting = {
-                    "name": f"{s}_{o}_{t}",
-                    "group": s, # groups represents all simulation with similar conditions but just different seed
-                    "seed": seed,
-                    "agents_average_initial_opinion": agents_average_initial_opinion,
-                    "technology_success_rate": technology_success_rate,
-                }
-                settings.append(setting)
+            for t, technology_success_rate in enumerate(technology_success_rate_list):
+                for tn, teams_num in enumerate(teams_num_list):
+                    setting = {
+                        "name": f"{s}_{o}_{t}_{tn}",
+                        "seed": seed,
+                        "teams_num": teams_num,                    
+                        "agents_average_initial_opinion": agents_average_initial_opinion,
+                        "technology_success_rate": technology_success_rate,
+                    }
+                    settings.append(setting)
 
     fieldnames = settings[0].keys()
 
-    settings_path = BASE_DIR / "settings_1.csv"
+    settings_path = BASE_DIR / "settings.csv"
     with open(settings_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()

@@ -39,7 +39,6 @@ Output:
     - Displays the figure interactively.
     - Optionally saves a publication-ready figure to disk.
 """
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -47,14 +46,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from utils import BASE_DIR
+from utils import BASE_DIR, load_settings, get_all_model_names
+from config import teams_num_list
 
 
 def plot_tradeoff_iso_adoption(
     base_dir: Path,
     *,
     csv_name: str = "final_adaption.csv",
-    levels: list[float] | None = None,
     show: bool = True,
     save_path: str | Path | None = None,
 ):
@@ -63,85 +62,139 @@ def plot_tradeoff_iso_adoption(
     using final_adaption as the outcome.
 
     Expects base_dir/final_adaption.csv with columns:
-        name, agents_average_initial_opinion, technology_success_rate, final_adaption
-    """
-    if levels is None:
-        levels = [0.2, 0.4, 0.6, 0.8]
+        name, final_adaption
 
+    Uses settings.csv (via load_settings) to attach:
+        teams_num, agents_average_initial_opinion, technology_success_rate
+
+    Produces one figure per teams_num in config.teams_num_list.
+    """
     path = base_dir / csv_name
     if not path.exists():
         raise FileNotFoundError(f"Not found: {path}")
 
     df = pd.read_csv(path)
 
-    required = {"agents_average_initial_opinion", "technology_success_rate", "final_adaption"}
+    required = {"name", "final_adaption"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing columns in {path.name}: {sorted(missing)}")
 
-    # Ensure numeric
-    df["agents_average_initial_opinion"] = pd.to_numeric(df["agents_average_initial_opinion"], errors="raise")
-    df["technology_success_rate"] = pd.to_numeric(df["technology_success_rate"], errors="raise")
+    # Ensure numeric adoption
     df["final_adaption"] = pd.to_numeric(df["final_adaption"], errors="raise")
 
-    # Pivot to grid (rows: opinion, cols: success_rate)
-    grid = df.pivot_table(
-        index="agents_average_initial_opinion",
-        columns="technology_success_rate",
-        values="final_adaption",
-        aggfunc="mean",
-    ).sort_index(axis=0).sort_index(axis=1)
+    # ---- load settings and join on name ----
+    settings = pd.DataFrame(load_settings())
 
-    if grid.isna().any().any():
-        # Contours require a complete grid; fail loudly of not. In that case, interpolation is needed.
-        nan_locs = np.argwhere(grid.isna().to_numpy())
-        raise ValueError(
-            f"Grid has missing cells (NaNs). Example missing at {nan_locs[:5].tolist()} "
-            f"after pivot. Ensure you ran all combinations or enable interpolation."
-        )
+    required_settings = {"name", "teams_num", "agents_average_initial_opinion", "technology_success_rate"}
+    missing_settings = required_settings - set(settings.columns)
+    if missing_settings:
+        raise ValueError(f"Missing columns in settings.csv: {sorted(missing_settings)}")
 
-    x_vals = grid.columns.to_numpy(dtype=float)  # technology_success_rate
-    y_vals = grid.index.to_numpy(dtype=float)    # agents_average_initial_opinion
-    Z = grid.to_numpy(dtype=float)
+    settings["teams_num"] = pd.to_numeric(settings["teams_num"], errors="raise").astype(int)
+    settings["agents_average_initial_opinion"] = pd.to_numeric(settings["agents_average_initial_opinion"], errors="raise")
+    settings["technology_success_rate"] = pd.to_numeric(settings["technology_success_rate"], errors="raise")
 
-    X, Y = np.meshgrid(x_vals, y_vals)
-
-    plt.figure()
-    color_levels = np.linspace(0.0, 1.0, 11)
-    # filled contour for adoption surface
-    cf = plt.contourf(
-        X, Y, Z,
-        levels=color_levels,
-        vmin=0.0,
-        vmax=1.0
+    df = df.merge(
+        settings[["name", "teams_num", "agents_average_initial_opinion", "technology_success_rate"]],
+        on="name",
+        how="inner",
     )
 
-    # iso-adoption curves
-    #cs = plt.contour(X, Y, Z, levels=levels)
-    #plt.clabel(cs, inline=True, fontsize=9, fmt="A=%.1f")
+    for col in ["agents_average_initial_opinion", "technology_success_rate"]:
+        x = f"{col}_x"
+        y = f"{col}_y"
+        if x in df.columns and y in df.columns:
+            df[col] = df[y]
+            df = df.drop(columns=[x, y])
+        elif x in df.columns:
+            df[col] = df[x]
+            df = df.drop(columns=[x])
+        elif y in df.columns:
+            df[col] = df[y]
+            df = df.drop(columns=[y])
 
-    plt.xlabel("AI Accuracy")
-    plt.ylabel("Average Initial Opinion")
-    plt.title("Tradeoff: AI Accuracy vs Average Initial Opinion")
-    plt.grid(True, alpha=0.25)
-    cbar = plt.colorbar(cf)
-    cbar.set_label("Final Adoption")
+    if df.empty:
+        raise ValueError("After merging final_adaption.csv with settings.csv, no rows remained. Check name matching.")
 
+    # ---- saving behavior ----
+    out_dir: Path | None = None
+    out_base: Path | None = None
     if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_path, bbox_inches="tight", dpi=200)
+        sp = Path(save_path)
+        if sp.suffix:
+            out_base = sp
+            out_base.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            out_dir = sp
+            out_dir.mkdir(parents=True, exist_ok=True)
 
-    if show:
-        plt.show()
+    grids = {}
 
-    return grid
+    for tn in teams_num_list:
+        # robust selection using your helper
+        names_tn = set(get_all_model_names(teams_num=tn))
+        df_tn = df[df["name"].isin(names_tn)].copy()
+
+        if df_tn.empty:
+            print(f"Skipping teams_num={tn}: no matching rows found.")
+            continue
+
+        # Pivot to grid (rows: opinion, cols: success_rate)
+        grid = df_tn.pivot_table(
+            index="agents_average_initial_opinion",
+            columns="technology_success_rate",
+            values="final_adaption",
+            aggfunc="mean",
+        ).sort_index(axis=0).sort_index(axis=1)
+
+        if grid.isna().any().any():
+            nan_locs = np.argwhere(grid.isna().to_numpy())
+            raise ValueError(
+                f"teams_num={tn}: Grid has missing cells (NaNs). Example missing at {nan_locs[:5].tolist()} "
+                f"after pivot. Ensure you ran all combinations or enable interpolation."
+            )
+
+        x_vals = grid.columns.to_numpy(dtype=float)
+        y_vals = grid.index.to_numpy(dtype=float)
+        Z = grid.to_numpy(dtype=float)
+        X, Y = np.meshgrid(x_vals, y_vals)
+
+        plt.figure()
+        color_levels = np.linspace(0.0, 1.0, 11)
+        cf = plt.contourf(X, Y, Z, levels=color_levels, vmin=0.0, vmax=1.0)
+
+        plt.xlabel("AI Accuracy")
+        plt.ylabel("Average Initial Opinion")
+        plt.title(f"Tradeoff: AI Accuracy vs Average Initial Opinion (teams_num={tn})")
+        plt.grid(True, alpha=0.25)
+        cbar = plt.colorbar(cf)
+        cbar.set_label("Final Adoption")
+
+        # decide output filename for this tn
+        out = None
+        if out_dir is not None:
+            out = out_dir / f"final_adoption_teams_{tn}.png"
+        elif out_base is not None:
+            out = out_base.with_name(f"{out_base.stem}_teams_{tn}{out_base.suffix}")
+
+        if out is not None:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(out, bbox_inches="tight", dpi=200)
+
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
+        grids[tn] = grid
+
+    return grids
 
 
 if __name__ == "__main__":
-    # Example:
     plot_tradeoff_iso_adoption(
         BASE_DIR,
-        levels=[0.2, 0.4, 0.6, 0.8],
-        save_path=Path(BASE_DIR) / "figures" / "final_adoption.png",
+        show=False,
+        save_path=Path(BASE_DIR) / "figures",
     )

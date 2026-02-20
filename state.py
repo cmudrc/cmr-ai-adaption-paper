@@ -46,30 +46,19 @@ This module defines the empirical bridge between agent-level dynamics
 and reduced-order organizational state dynamics.
 """
 
+import os
 import csv
-from config import technology_use_cutoff_opinion
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
 import trustdynamics as td
 
-from config import steps, BASE_DIR
+from config import steps, BASE_DIR, technology_use_cutoff_opinion
 from utils import get_all_model_names, get_model
-
 
 LOUDNESS_BOUND = 0.5
 
-def sqlb_state(
-    opinion: float,
-    loudness: float,
-    *,
-    loudness_bound: float,
-) -> str:
-    """
-    Classify agent into SQLB state under hierarchical logic.
 
-    B: opinion < technology_use_cutoff_opinion
-    S: technology_use_cutoff_opinion <= opinion < 0
-    Q: opinion >= 0 and loudness < loudness_bound
-    L: opinion >= 0 and loudness >= loudness_bound
-    """
+def sqlb_state(opinion: float, loudness: float, *, loudness_bound: float) -> str:
     # ---- Belief layer ----
     if opinion < technology_use_cutoff_opinion:
         return "B"
@@ -79,62 +68,81 @@ def sqlb_state(
     # ---- Activation layer (only for advocates) ----
     if loudness < loudness_bound:
         return "Q"
-    else:
-        return "L"
+    return "L"
 
-def get_opinion(model: td.Model, agent: int | str, history_index: int):
-    return model.organization.get_agent_opinion(agent, history_index)
 
-def get_inbound_trust(model: td.Model, agent: int | str, history_index: int):
-    """
-    Inbound trust mass: sum of trust from neighbors -> agent.
-    """
+def get_inbound_trust(model: td.Model, agent: int | str, history_index: int) -> float:
     neighbors = list(model.organization.agents_connected_to(agent))
     inbound = 0.0
     for j in neighbors:
-        inbound += float(model.organization.get_agent_trust(j, agent, history_index=history_index))
+        inbound += float(
+            model.organization.get_agent_trust(j, agent, history_index=history_index)
+        )
     return inbound
 
-def get_state(model: td.Model, agent: int | str, history_index: int, loudness_bound: float):
-    opinion = get_opinion(model, agent, history_index)
-    inbound_trust = get_inbound_trust(model, agent, history_index)
+
+def classify_agent(model: td.Model, agent: int | str, t: int, loudness_bound: float) -> str:
+    opinion = float(model.organization.get_agent_opinion(agent, t))
+    inbound_trust = get_inbound_trust(model, agent, t)
     loudness = opinion * inbound_trust
     return sqlb_state(opinion, loudness, loudness_bound=loudness_bound)
 
 
-if __name__ == "__main__":
+def process_one_model(model_name: str) -> tuple[str, str]:
     states_dir = BASE_DIR / "states"
     states_dir.mkdir(parents=True, exist_ok=True)
-    model_names = get_all_model_names(BASE_DIR)
-    for model_name in model_names:
-        model = get_model(BASE_DIR, model_name)
-        agents = list(model.organization.all_agent_ids)
-        n_agents = len(agents)
-        if n_agents == 0:
-            continue
 
-        out_path = states_dir / f"{model_name}.csv"
+    out_path = states_dir / f"{model_name}.csv"
+    if out_path.exists():
+        return model_name, "skipped (exists)"
 
-        with out_path.open("w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(
-                f,
-                fieldnames=["t", "ratio_S", "ratio_Q", "ratio_L", "ratio_B"],
+    model = get_model(model_name)
+    agents = list(model.organization.all_agent_ids)
+    n_agents = len(agents)
+    if n_agents == 0:
+        return model_name, "skipped (no agents)"
+
+    with out_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["t", "ratio_S", "ratio_Q", "ratio_L", "ratio_B"],
+        )
+        writer.writeheader()
+
+        for t in range(steps):
+            counts = {"S": 0, "Q": 0, "L": 0, "B": 0}
+            for agent in agents:
+                st = classify_agent(model, agent, t, loudness_bound=LOUDNESS_BOUND)
+                counts[st] += 1
+
+            writer.writerow(
+                {
+                    "t": t,
+                    "ratio_S": counts["S"] / n_agents,
+                    "ratio_Q": counts["Q"] / n_agents,
+                    "ratio_L": counts["L"] / n_agents,
+                    "ratio_B": counts["B"] / n_agents,
+                }
             )
-            writer.writeheader()
 
-            for t in range(steps):
-                counts = {"S": 0, "Q": 0, "L": 0, "B": 0}
-                for agent in agents:
-                    st = get_state(model, agent, t, loudness_bound=LOUDNESS_BOUND)
-                    counts[st] += 1
-                writer.writerow(
-                    {
-                        "t": t,
-                        "ratio_S": counts["S"] / n_agents,
-                        "ratio_Q": counts["Q"] / n_agents,
-                        "ratio_L": counts["L"] / n_agents,
-                        "ratio_B": counts["B"] / n_agents,
-                    }
-                )
+    return model_name, "wrote"
 
-        print(f"Wrote {out_path}")
+
+def main():
+    model_names = get_all_model_names()
+
+    max_workers = max(1, (os.cpu_count() or 2) - 2)
+
+    total = len(model_names)
+    done = 0
+
+    with ProcessPoolExecutor(max_workers=max_workers) as ex:
+        futures = [ex.submit(process_one_model, name) for name in model_names]
+        for fut in as_completed(futures):
+            name, status = fut.result()
+            done += 1
+            print(f"[{done}/{total}] {name}: {status}")
+
+
+if __name__ == "__main__":
+    main()
