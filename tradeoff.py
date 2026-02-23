@@ -45,6 +45,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 from utils import BASE_DIR, load_settings, get_all_model_names
 from config import teams_num_list
@@ -161,13 +162,36 @@ def plot_tradeoff_iso_adoption(
         X, Y = np.meshgrid(x_vals, y_vals)
 
         plt.figure()
-        color_levels = np.linspace(0.0, 1.0, 11)
+        #color_levels = np.linspace(0.0, 1.0, 11)
+        color_levels = np.array([0.0, 0.2, 0.8, 1.0])
         cf = plt.contourf(X, Y, Z, levels=color_levels, vmin=0.0, vmax=1.0)
 
         plt.xlabel("AI Accuracy")
         plt.ylabel("Average Initial Opinion")
-        plt.title(f"Tradeoff: AI Accuracy vs Average Initial Opinion (teams_num={tn})")
-        plt.grid(True, alpha=0.25)
+        #plt.title(f"Tradeoff: AI Accuracy vs Average Initial Opinion (teams_num={tn})")
+        plt.title(f"Number of teams: {tn}")
+        
+        ax = plt.gca()
+
+        # ---- major ticks (labels only) ----
+        ax.set_xticks([0.0, 1.0])
+        ax.set_yticks([-1.0, 0.0, 1.0])
+
+        # ---- minor tick spacing (grid resolution control) ----
+        ax.xaxis.set_minor_locator(MultipleLocator(0.1))   # every 0.1 on x
+        ax.yaxis.set_minor_locator(MultipleLocator(0.2))   # every 0.2 on y
+
+        # ---- grid ----
+        ax.grid(which="minor", alpha=0.2)
+        ax.grid(which="major", alpha=0.4)
+
+        ax.set_xlim(0.0, 1.0)
+        ax.set_ylim(-1.0, 1.0)
+
+        # optional: fix limits
+        #plt.xlim(0.0, 1.0)
+        #plt.ylim(-1.0, 1.0)
+
         cbar = plt.colorbar(cf)
         cbar.set_label("Final Adoption")
 
