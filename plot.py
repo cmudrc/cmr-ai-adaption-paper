@@ -115,7 +115,11 @@ def plot_sqlb_states(base_dir: Path, model_name: str, *, show: bool = True, save
 
     plt.xlabel("Time step (t)")
     plt.ylabel("Agent ratio")
-    plt.title(f"SQLB state ratios — {model_name}")
+    #plt.title(f"State Ratios — {model_name}")
+    plt.title(f"State Ratios")
+    ax = plt.gca()
+    ax.set_xticks([0.0])
+    plt.xlim(0, 100)
     plt.ylim(0, 1)
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -202,7 +206,10 @@ def plot_sqlb_states_vs_ode(
 
 
 # Example:
-#plot_sqlb_states(BASE_DIR, model_name)
-plot_sqlb_states_vs_ode(BASE_DIR, "0_7_8_3", show=False, save_path=BASE_DIR / "figures" / "ode_1_example.png")
-plot_sqlb_states_vs_ode(BASE_DIR, "3_20_7_5", show=False, save_path=BASE_DIR / "figures" / "ode_2_example.png")
-plot_sqlb_states_vs_ode(BASE_DIR, "4_17_3_1", show=False, save_path=BASE_DIR / "figures" / "ode_3_example.png")
+plot_sqlb_states(BASE_DIR, "0_7_8_3", show=False, save_path=BASE_DIR / "figures" / "abm_example_1.png")
+plot_sqlb_states(BASE_DIR, "4_15_7_5", show=False, save_path=BASE_DIR / "figures" / "abm_example_2.png")
+plot_sqlb_states(BASE_DIR, "1_13_8_4", show=False, save_path=BASE_DIR / "figures" / "abm_example_3.png")
+#
+#plot_sqlb_states_vs_ode(BASE_DIR, "0_7_8_3", show=False, save_path=BASE_DIR / "figures" / "ode_1_example.png")
+#plot_sqlb_states_vs_ode(BASE_DIR, "3_20_7_5", show=False, save_path=BASE_DIR / "figures" / "ode_2_example.png")
+#plot_sqlb_states_vs_ode(BASE_DIR, "4_17_3_1", show=False, save_path=BASE_DIR / "figures" / "ode_3_example.png")
