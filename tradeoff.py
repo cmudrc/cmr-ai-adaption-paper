@@ -166,16 +166,22 @@ def plot_tradeoff_iso_adoption(
         color_levels = np.array([0.0, 0.2, 0.8, 1.0])
         cf = plt.contourf(X, Y, Z, levels=color_levels, vmin=0.0, vmax=1.0)
 
-        plt.xlabel("AI Accuracy")
-        plt.ylabel("Average Initial Opinion")
+        plt.xlabel("AI Accuracy", labelpad=-10)
+        plt.ylabel("Average Initial Opinion", labelpad=-30)
         #plt.title(f"Tradeoff: AI Accuracy vs Average Initial Opinion (teams_num={tn})")
         plt.title(f"Number of teams: {tn}")
         
         ax = plt.gca()
 
-        # ---- major ticks (labels only) ----
+        # ---- major ticks (semantic labels) ----
         ax.set_xticks([0.0, 1.0])
-        ax.set_yticks([-1.0, 0.0, 1.0])
+        ax.set_xticklabels(["Low", "High"])
+
+        ax.set_yticks([-1.0, 1.0])
+        ax.set_yticklabels(["Negative", "Positive"])
+
+        ax.tick_params(axis='x', labelsize=9)
+        ax.tick_params(axis='y', labelsize=9)
 
         # ---- minor tick spacing (grid resolution control) ----
         ax.xaxis.set_minor_locator(MultipleLocator(0.1))   # every 0.1 on x
@@ -193,7 +199,21 @@ def plot_tradeoff_iso_adoption(
         #plt.ylim(-1.0, 1.0)
 
         cbar = plt.colorbar(cf)
-        cbar.set_label("Final Adoption")
+        # ---- midpoints of each regime ----
+        region_midpoints = [
+            (0.0 + 0.2) / 2,   # 0.1
+            (0.2 + 0.8) / 2,   # 0.5
+            (0.8 + 1.0) / 2    # 0.9
+        ]
+
+        cbar.set_ticks(region_midpoints)
+        cbar.set_ticklabels([
+            "Low",
+            "Partial",
+            "High"
+        ])
+
+        cbar.set_label("Adoption Regime")
 
         # decide output filename for this tn
         out = None
