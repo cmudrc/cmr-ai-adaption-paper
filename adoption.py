@@ -17,7 +17,7 @@ For each model:
             - agents_average_initial_opinion
             - technology_success_rate
     6. Save aggregated results to:
-            final_adaption.csv
+            final_adoption.csv
 
 Interpretation:
     - A_final represents the ODE-predicted fraction of agents
@@ -32,11 +32,11 @@ Assumptions:
     - All models share a comparable time horizon.
 
 Output:
-    final_adaption.csv with columns:
+    final_adoption.csv with columns:
         name,
         agents_average_initial_opinion,
         technology_success_rate,
-        final_adaption
+        final_adoption
 """
 
 import numpy as np
@@ -75,7 +75,7 @@ def ode_final_adoption(base_dir: Path, model_name: str, T: int | None = None) ->
     return float(x[1] + x[2])  # Q + L
 
 
-def build_final_adaption_table(base_dir: Path, *, T: int | None = None) -> pd.DataFrame:
+def build_final_adoption_table(base_dir: Path, *, T: int | None = None) -> pd.DataFrame:
     settings = pd.DataFrame(load_settings())
 
     # make sure numeric
@@ -94,7 +94,7 @@ def build_final_adaption_table(base_dir: Path, *, T: int | None = None) -> pd.Da
             continue
 
         try:
-            final_adaption = ode_final_adoption(base_dir, model_name, T=T)
+            final_adoption = ode_final_adoption(base_dir, model_name, T=T)
         except FileNotFoundError:
             # Skip if missing states CSV or odes NPZ
             continue
@@ -103,7 +103,7 @@ def build_final_adaption_table(base_dir: Path, *, T: int | None = None) -> pd.Da
         rows.append(
             {
                 "name": model_name,
-                "final_adaption": float(final_adaption),
+                "final_adoption": float(final_adoption),
             }
         )
 
@@ -114,14 +114,14 @@ def build_final_adaption_table(base_dir: Path, *, T: int | None = None) -> pd.Da
     return df_out.sort_values(["agents_average_initial_opinion", "technology_success_rate", "name"]).reset_index(drop=True)
 
 
-def save_final_adaption_csv(base_dir: Path, df: pd.DataFrame) -> Path:
-    out_path = base_dir / "final_adaption.csv"
+def save_final_adoption_csv(base_dir: Path, df: pd.DataFrame) -> Path:
+    out_path = base_dir / "final_adoption.csv"
     df.to_csv(out_path, index=False)
     return out_path
 
 
 if __name__ == "__main__":
-    df = build_final_adaption_table(BASE_DIR, T=None)  # or set T=100 explicitly
-    out_path = save_final_adaption_csv(BASE_DIR, df)
+    df = build_final_adoption_table(BASE_DIR, T=None)  # or set T=100 explicitly
+    out_path = save_final_adoption_csv(BASE_DIR, df)
     print(f"Saved: {out_path}")
     print(df.head())

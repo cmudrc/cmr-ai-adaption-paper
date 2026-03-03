@@ -10,13 +10,13 @@ adoption as a function of two controllable levers:
 
 The adoption metric used is:
 
-    final_adaption = Q(T) + L(T)
+    final_adoption = Q(T) + L(T)
 
 where Q and L are the fractions of agents in adoption states at the
 end of the simulation horizon T, predicted by the fitted ODE surrogate.
 
 Workflow:
-    - Load final_adaption.csv (generated from ODE-based adoption calculation).
+    - Load final_adoption.csv (generated from ODE-based adoption calculation).
     - Pivot the experimental grid into a 2D matrix:
             rows    → average initial opinion
             columns → AI accuracy
@@ -54,16 +54,16 @@ from config import teams_num_list
 def plot_tradeoff_iso_adoption(
     base_dir: Path,
     *,
-    csv_name: str = "final_adaption.csv",
+    csv_name: str = "final_adoption.csv",
     show: bool = True,
     save_path: str | Path | None = None,
 ):
     """
     Plot the tradeoff between technology_success_rate (x) and agents_average_initial_opinion (y),
-    using final_adaption as the outcome.
+    using final_adoption as the outcome.
 
-    Expects base_dir/final_adaption.csv with columns:
-        name, final_adaption
+    Expects base_dir/final_adoption.csv with columns:
+        name, final_adoption
 
     Uses settings.csv (via load_settings) to attach:
         teams_num, agents_average_initial_opinion, technology_success_rate
@@ -76,13 +76,13 @@ def plot_tradeoff_iso_adoption(
 
     df = pd.read_csv(path)
 
-    required = {"name", "final_adaption"}
+    required = {"name", "final_adoption"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing columns in {path.name}: {sorted(missing)}")
 
     # Ensure numeric adoption
-    df["final_adaption"] = pd.to_numeric(df["final_adaption"], errors="raise")
+    df["final_adoption"] = pd.to_numeric(df["final_adoption"], errors="raise")
 
     # ---- load settings and join on name ----
     settings = pd.DataFrame(load_settings())
@@ -116,7 +116,7 @@ def plot_tradeoff_iso_adoption(
             df = df.drop(columns=[y])
 
     if df.empty:
-        raise ValueError("After merging final_adaption.csv with settings.csv, no rows remained. Check name matching.")
+        raise ValueError("After merging final_adoption.csv with settings.csv, no rows remained. Check name matching.")
 
     # ---- saving behavior ----
     out_dir: Path | None = None
@@ -145,7 +145,7 @@ def plot_tradeoff_iso_adoption(
         grid = df_tn.pivot_table(
             index="agents_average_initial_opinion",
             columns="technology_success_rate",
-            values="final_adaption",
+            values="final_adoption",
             aggfunc="mean",
         ).sort_index(axis=0).sort_index(axis=1)
 
@@ -188,8 +188,15 @@ def plot_tradeoff_iso_adoption(
         ax.yaxis.set_minor_locator(MultipleLocator(0.2))   # every 0.2 on y
 
         # ---- grid ----
-        ax.grid(which="minor", alpha=0.2)
-        ax.grid(which="major", alpha=0.4)
+        #ax.grid(which="minor", alpha=0.2)
+        #ax.grid(which="major", alpha=0.4)
+        ax.axhline(
+            y=0.0,
+            color='gray',
+            #linestyle='--',
+            linewidth=1.2,
+            alpha=0.5
+        )
 
         ax.set_xlim(0.0, 1.0)
         ax.set_ylim(-1.0, 1.0)
