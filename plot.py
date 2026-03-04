@@ -205,11 +205,15 @@ def plot_sqlb_states_vs_ode(
     return df, ode, Q, dt_fit
 
 
-# Example:
-plot_sqlb_states(BASE_DIR, "0_7_8_3", show=False, save_path=BASE_DIR / "figures" / "abm_example_1.png")
-plot_sqlb_states(BASE_DIR, "4_15_7_5", show=False, save_path=BASE_DIR / "figures" / "abm_example_2.png")
+# Examples:
+model_name_1 = "0_7_8_3"
+model_name_2 = "4_15_7_5"
+model_name_3 = "1_13_8_4"
+
+plot_sqlb_states(BASE_DIR, model_name_1, show=False, save_path=BASE_DIR / "figures" / "abm_example_1.png")
+plot_sqlb_states(BASE_DIR, model_name_2, show=False, save_path=BASE_DIR / "figures" / "abm_example_2.png")
 plot_sqlb_states(BASE_DIR, "1_13_8_4", show=False, save_path=BASE_DIR / "figures" / "abm_example_3.png")
-#
-#plot_sqlb_states_vs_ode(BASE_DIR, "0_7_8_3", show=False, save_path=BASE_DIR / "figures" / "ode_1_example.png")
-#plot_sqlb_states_vs_ode(BASE_DIR, "3_20_7_5", show=False, save_path=BASE_DIR / "figures" / "ode_2_example.png")
-#plot_sqlb_states_vs_ode(BASE_DIR, "4_17_3_1", show=False, save_path=BASE_DIR / "figures" / "ode_3_example.png")
+
+plot_sqlb_states_vs_ode(BASE_DIR, model_name_1, show=False, save_path=BASE_DIR / "figures" / "ode_example_1.png")
+plot_sqlb_states_vs_ode(BASE_DIR, model_name_2, show=False, save_path=BASE_DIR / "figures" / "ode_example_2.png")
+plot_sqlb_states_vs_ode(BASE_DIR, model_name_3, show=False, save_path=BASE_DIR / "figures" / "ode_example_3.png")
