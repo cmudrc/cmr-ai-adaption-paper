@@ -195,9 +195,9 @@ def plot_org_structure(
 
     # Team-team edges (thick dashed black, on top)
     # --- Team-team edges (subtle, background layer) ---
-    TEAM_EDGE_LW = 0.8        # thin
-    TEAM_EDGE_ALPHA = 0.35    # very transparent
-    TEAM_EDGE_COLOR = "black"
+    TEAM_EDGE_LW = 1        # thin
+    TEAM_EDGE_ALPHA = 0.75    # very transparent
+    TEAM_EDGE_COLOR = "#494949"
     TEAM_EDGE_Z = 0           # behind everything
 
     edge_gap = 0.05 * team_radius  # keep your boundary clipping
@@ -230,9 +230,9 @@ def plot_org_structure(
                             alpha=0.9, zorder=6))
 
     # Intra-team agent edges
-    AGENT_EDGE_COLOR = "#494949"
+    AGENT_EDGE_COLOR = "#14368D"
     AGENT_EDGE_ALPHA = 0.65
-    AGENT_EDGE_LW = 0.8
+    AGENT_EDGE_LW = 1
     for team in teams:
         for (u, v) in intra_edges_by_team[team]:
             x1, y1 = pos_agent[u]
@@ -254,41 +254,41 @@ def plot_org_structure(
                 linestyle="--", color="gray", zorder=1)
 
     # Agent nodes
+    NODE_COLOR = "#1B1E72"
     xs = [pos_agent[a][0] for t in teams for a in agents_by_team[t]]
     ys = [pos_agent[a][1] for t in teams for a in agents_by_team[t]]
-    ax.scatter(xs, ys, s=35, zorder=7)
+    ax.scatter(xs, ys,
+        s=35,
+        zorder=7,
+        color=NODE_COLOR,
+    )
 
     ax.set_aspect("equal", adjustable="datalim")
     ax.axis("off")
     plt.tight_layout()
-    plt.show()
-
-# usage:
-from utils import get_model
-'''
-model = get_model("0_0_0_1")
-plot_org_structure(
-    model,
-    team_padding=0.1,
-    team_scale=0.5
-    #team_radius=500
-)
-'''
+    return fig, ax
 
 
-model = get_model("0_0_0_1")
-plot_org_structure(
-    model,
-    team_padding=0.1,
-    team_scale=0.5
-    #team_radius=500
-)
+if __name__ == "__main__":
+    from utils import get_model, BASE_DIR
 
+    configs = [
+        ("0_0_0_1", "network_teams_5"),
+        ("0_2_10_3", "network_teams_15"),
+        ("4_15_7_5", "network_teams_25"),
+    ]
 
-model = get_model("4_15_7_5")
-plot_org_structure(
-    model,
-    team_padding=0.1,
-    team_scale=0.5
-    #team_radius=500
-)
+    for model_name, filename in configs:
+        model = get_model(model_name)
+
+        fig, ax = plot_org_structure(
+            model,
+            team_padding=1,
+            team_scale=1
+        )
+
+        save_path = BASE_DIR / "figures" / f"{filename}.png"
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+
+        print(f"Saved: {save_path}")
